@@ -1,6 +1,6 @@
 // js/api.js
 
-const API_BASE_URL = 'http://192.168.1.7:5000/api';
+const API_BASE = 'https://fake-cert-detection-production.up.railway.app/api';
 
 const API = {
 
@@ -39,7 +39,7 @@ const API = {
       }
 
       const response = await fetch(
-        `${API_BASE_URL}${path}`,
+        `${API_BASE}${path}`,
         options
       );
 
