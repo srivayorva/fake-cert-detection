@@ -65,10 +65,12 @@ app.get('/api/health', (req, res) => {
 // ─── Serve Frontend (static) in production ──────────────────────
 // ─── Serve Frontend (static) ─────────────────────────────────────
 // ─── Serve Frontend ──────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, 'frontend', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'frontend', 'public')));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend', 'public', 'index.html'));
+  res.sendFile(
+    path.join(__dirname, '..', 'frontend', 'public', 'index.html')
+  );
 });
 
 // ─── 404 handler ────────────────────────────────────────────────
