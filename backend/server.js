@@ -11,7 +11,11 @@ const authRoutes  = require('./routes/auth');
 const certRoutes  = require('./routes/certificates');
 const verifyRoutes = require('./routes/verify');
 
-const app  = express();
+const app = express();
+
+// Fix Railway proxy issue
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 5000;
 
 // ─── Security & Parsing ──────────────────────────────────────────
