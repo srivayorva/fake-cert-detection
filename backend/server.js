@@ -65,15 +65,12 @@ app.get('/api/health', (req, res) => {
 // ─── Serve Frontend (static) in production ──────────────────────
 // ─── Serve Frontend (static) ─────────────────────────────────────
 // ─── Serve Frontend ──────────────────────────────────────────────
-const frontendPath = path.resolve(__dirname, 'frontend', 'public');
-
-console.log('Frontend path:', frontendPath);
-
-app.use(express.static(frontendPath));
+app.use(express.static(path.join(__dirname, 'frontend', 'public')));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  res.sendFile(path.join(__dirname, 'frontend', 'public', 'index.html'));
 });
+
 // ─── 404 handler ────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} not found.` });
