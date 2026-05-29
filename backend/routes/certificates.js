@@ -1,15 +1,20 @@
 // routes/certificates.js — Upload, list, revoke certificates
-const express = require('express');
-const QRCode  = require('qrcode');
-const { v4: uuidv4 } = require('uuid');
-const db      = require('../db');
-const auth    = require('../middleware/auth');
-const router  = express.Router();
 
-// Helper: generate QR code as base64 PNG
+const express = require('express');
+const QRCode = require('qrcode');
+const db = require('../db');
+const auth = require('../middleware/auth');
+
+const router = express.Router();
+
+
+// ─────────────────────────────────────────────────────────────
+// Helper: Generate QR Code
+// ─────────────────────────────────────────────────────────────
 async function generateQR(certId) {
+
   const url =
-    `https://fake-cert-detection-production.up.railway.app/index.html?certId=${certId}`;
+    `https://fake-cert-detection-hje5.vercel.app/index.html?certId=${certId}`;
 
   return QRCode.toDataURL(url, {
     errorCorrectionLevel: 'H',
@@ -17,141 +22,345 @@ async function generateQR(certId) {
   });
 }
 
-// ─── POST /api/certificates  (protected) ────────────────────────
-// Upload / register a new certificate
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/certificates
+// Upload/Register Certificate
+// ─────────────────────────────────────────────────────────────
 router.post('/', auth, async (req, res) => {
+
   const {
-    student_name, roll_number, email, course,
-    specialization, issue_date, expiry_date, grade, cgpa
+    student_name,
+    roll_number,
+    email,
+    course,
+    specialization,
+    issue_date,
+    expiry_date,
+    grade,
+    cgpa
   } = req.body;
 
-  if (!student_name || !roll_number || !course || !issue_date) {
+  // Validation
+  if (
+    !student_name ||
+    !roll_number ||
+    !course ||
+    !issue_date
+  ) {
     return res.status(400).json({
       success: false,
-      message: 'student_name, roll_number, course, and issue_date are required.'
+      message:
+        'student_name, roll_number, course, and issue_date are required.'
     });
   }
 
   try {
-    const certId = `${req.institution.code}-${new Date().getFullYear()}-${uuidv4().slice(0, 8).toUpperCase()}`;
+
+    // Get current year
+    const year = new Date().getFullYear();
+
+    // Count existing certificates
+    const [countRows] = await db.execute(
+      `SELECT COUNT(*) AS total
+       FROM certificates
+       WHERE institution_id = ?`,
+      [req.institution.id]
+    );
+
+    // Generate sequential number
+    const nextNumber = String(
+      countRows[0].total + 1
+    ).padStart(3, '0');
+
+    // Generate certificate ID
+    const certId =
+      `${req.institution.code}-${year}-${nextNumber}`;
+
+    // Generate QR
     const qrData = await generateQR(certId);
 
+    // Save certificate
     await db.execute(
       `INSERT INTO certificates
-         (cert_id, student_name, roll_number, email, course, specialization,
-          institution_id, issue_date, expiry_date, grade, cgpa, qr_code_data)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (
+        cert_id,
+        student_name,
+        roll_number,
+        email,
+        course,
+        specialization,
+        institution_id,
+        issue_date,
+        expiry_date,
+        grade,
+        cgpa,
+        qr_code_data
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        certId, student_name, roll_number, email || null, course,
-        specialization || null, req.institution.id, issue_date,
-        expiry_date || null, grade || null, cgpa || null, qrData
+        certId,
+        student_name,
+        roll_number,
+        email || null,
+        course,
+        specialization || null,
+        req.institution.id,
+        issue_date,
+        expiry_date || null,
+        grade || null,
+        cgpa || null,
+        qrData
       ]
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'Certificate registered successfully.',
+      message: 'Certificate uploaded successfully.',
       cert_id: certId,
-      qr_code: qrData,
+      qr_code: qrData
     });
+
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ success: false, message: 'Certificate already exists.' });
-    }
+
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error while saving certificate.' });
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while saving certificate.'
+    });
   }
 });
 
-// ─── GET /api/certificates  (protected) ─────────────────────────
-// List all certificates for logged-in institution
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/certificates
+// List certificates
+// ─────────────────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
-  const page  = parseInt(req.query.page)  || 1;
-  const limit = parseInt(req.query.limit) || 20;
-  const search = req.query.search || '';
-  const offset = (page - 1) * limit;
+
+  const page =
+    parseInt(req.query.page) || 1;
+
+  const limit =
+    parseInt(req.query.limit) || 20;
+
+  const search =
+    req.query.search || '';
+
+  const offset =
+    (page - 1) * limit;
 
   try {
-    const searchWild = `%${search}%`;
+
+    const searchWild =
+      `%${search}%`;
+
     const [rows] = await db.execute(
-      `SELECT cert_id, student_name, roll_number, email, course,
-              specialization, issue_date, expiry_date, grade, cgpa,
-              is_revoked, revoke_reason, created_at
-       FROM certificates
-       WHERE institution_id = ?
-         AND (student_name LIKE ? OR roll_number LIKE ? OR cert_id LIKE ?)
-       ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [req.institution.id, searchWild, searchWild, searchWild, limit, offset]
+      `SELECT
+        cert_id,
+        student_name,
+        roll_number,
+        email,
+        course,
+        specialization,
+        issue_date,
+        expiry_date,
+        grade,
+        cgpa,
+        is_revoked,
+        revoke_reason,
+        created_at
+      FROM certificates
+      WHERE institution_id = ?
+      AND (
+        student_name LIKE ?
+        OR roll_number LIKE ?
+        OR cert_id LIKE ?
+      )
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?`,
+      [
+        req.institution.id,
+        searchWild,
+        searchWild,
+        searchWild,
+        limit,
+        offset
+      ]
     );
 
-    const [[{ total }]] = await db.execute(
-      `SELECT COUNT(*) AS total FROM certificates
-       WHERE institution_id = ?
-         AND (student_name LIKE ? OR roll_number LIKE ? OR cert_id LIKE ?)`,
-      [req.institution.id, searchWild, searchWild, searchWild]
-    );
+    const [[{ total }]] =
+      await db.execute(
+        `SELECT COUNT(*) AS total
+         FROM certificates
+         WHERE institution_id = ?
+         AND (
+           student_name LIKE ?
+           OR roll_number LIKE ?
+           OR cert_id LIKE ?
+         )`,
+        [
+          req.institution.id,
+          searchWild,
+          searchWild,
+          searchWild
+        ]
+      );
 
-    res.json({ success: true, data: rows, total, page, limit });
+    res.json({
+      success: true,
+      data: rows,
+      total,
+      page,
+      limit
+    });
+
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error fetching certificates.' });
+
+    res.status(500).json({
+      success: false,
+      message:
+        'Server error fetching certificates.'
+    });
   }
 });
 
-// ─── GET /api/certificates/:certId/qr  (protected) ──────────────
-// Get QR code for a certificate
+
+// ─────────────────────────────────────────────────────────────
+// GET QR Code
+// ─────────────────────────────────────────────────────────────
 router.get('/:certId/qr', auth, async (req, res) => {
+
   try {
-    const [rows] = await db.execute(
-      'SELECT qr_code_data FROM certificates WHERE cert_id = ? AND institution_id = ?',
-      [req.params.certId, req.institution.id]
-    );
+
+    const [rows] =
+      await db.execute(
+        `SELECT qr_code_data
+         FROM certificates
+         WHERE cert_id = ?
+         AND institution_id = ?`,
+        [
+          req.params.certId,
+          req.institution.id
+        ]
+      );
+
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Certificate not found.' });
+      return res.status(404).json({
+        success: false,
+        message: 'Certificate not found.'
+      });
     }
-    res.json({ success: true, qr_code: rows[0].qr_code_data });
+
+    res.json({
+      success: true,
+      qr_code: rows[0].qr_code_data
+    });
+
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error.' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Server error.'
+    });
   }
 });
 
-// ─── PATCH /api/certificates/:certId/revoke  (protected) ────────
-// Revoke a certificate
+
+// ─────────────────────────────────────────────────────────────
+// Revoke Certificate
+// ─────────────────────────────────────────────────────────────
 router.patch('/:certId/revoke', auth, async (req, res) => {
+
   const { reason } = req.body;
+
   try {
-    const [result] = await db.execute(
-      `UPDATE certificates
-       SET is_revoked = 1, revoke_reason = ?
-       WHERE cert_id = ? AND institution_id = ?`,
-      [reason || 'Revoked by institution', req.params.certId, req.institution.id]
-    );
+
+    const [result] =
+      await db.execute(
+        `UPDATE certificates
+         SET is_revoked = 1,
+             revoke_reason = ?
+         WHERE cert_id = ?
+         AND institution_id = ?`,
+        [
+          reason ||
+          'Revoked by institution',
+          req.params.certId,
+          req.institution.id
+        ]
+      );
+
     if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'Certificate not found.' });
+      return res.status(404).json({
+        success: false,
+        message: 'Certificate not found.'
+      });
     }
-    res.json({ success: true, message: 'Certificate revoked successfully.' });
+
+    res.json({
+      success: true,
+      message:
+        'Certificate revoked successfully.'
+    });
+
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error revoking certificate.' });
+
+    res.status(500).json({
+      success: false,
+      message:
+        'Server error revoking certificate.'
+    });
   }
 });
 
-// ─── DELETE /api/certificates/:certId  (protected) ──────────────
+
+// ─────────────────────────────────────────────────────────────
+// Delete Certificate
+// ─────────────────────────────────────────────────────────────
 router.delete('/:certId', auth, async (req, res) => {
+
   try {
-    const [result] = await db.execute(
-      'DELETE FROM certificates WHERE cert_id = ? AND institution_id = ?',
-      [req.params.certId, req.institution.id]
-    );
+
+    const [result] =
+      await db.execute(
+        `DELETE FROM certificates
+         WHERE cert_id = ?
+         AND institution_id = ?`,
+        [
+          req.params.certId,
+          req.institution.id
+        ]
+      );
+
     if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'Certificate not found.' });
+      return res.status(404).json({
+        success: false,
+        message: 'Certificate not found.'
+      });
     }
-    res.json({ success: true, message: 'Certificate deleted.' });
+
+    res.json({
+      success: true,
+      message:
+        'Certificate deleted.'
+    });
+
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error.' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Server error.'
+    });
   }
 });
 
