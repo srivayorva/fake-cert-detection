@@ -9,7 +9,7 @@ const router  = express.Router();
 // Helper: generate QR code as base64 PNG
 async function generateQR(certId) {
   const url =
-    `http://192.168.1.7:5500/frontend/public/index.html?certId=${certId}`;
+    `https://fake-cert-detection-production.up.railway.app/frontend/public/index.html?certId=${certId}`;
 
   return QRCode.toDataURL(url, {
     errorCorrectionLevel: 'H',
