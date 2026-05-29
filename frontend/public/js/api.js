@@ -1,7 +1,7 @@
 // js/api.js
 
-const API_BASE = 'https://fake-cert-detection-production.up.railway.app/api';
-
+const API_BASE =
+  "https://fake-cert-detection.onrender.com/api";
 const API = {
 
   // Get stored JWT token
