@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — CertVerify</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="dash-page">
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <span class="brand-icon">⬡</span> CertVerify
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-link active" data-panel="overview">📊 Overview</a>
+    <a class="sidebar-link" data-panel="upload">⬆ Upload Certificate</a>
+    <a class="sidebar-link" data-panel="manage">📋 Manage Certificates</a>
+    <a class="sidebar-link" href="index.html">🔍 Public Verify</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="inst-info" id="instInfo">—</div>
+    <button class="btn btn-ghost" onclick="logout()">Sign Out</button>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="dash-main">
+  <!-- Topbar -->
+  <header class="dash-topbar">
+    <button class="hamburger" id="sidebarToggle">☰</button>
+    <h2 class="page-title" id="pageTitle">Overview</h2>
+    <div class="topbar-right">
+      <span id="topbarInst" class="inst-badge"></span>
+    </div>
+  </header>
+
+  <!-- ── PANEL: Overview ───────────────────────────────────────── -->
+  <div class="panel active" id="panel-overview">
+    <div class="dash-stats">
+      <div class="dash-stat-card">
+        <div class="dash-stat-num" id="dTotal">—</div>
+        <div class="dash-stat-label">Total Certificates</div>
+      </div>
+      <div class="dash-stat-card accent">
+        <div class="dash-stat-num" id="dValid">—</div>
+        <div class="dash-stat-label">Active</div>
+      </div>
+      <div class="dash-stat-card warn">
+        <div class="dash-stat-num" id="dRevoked">—</div>
+        <div class="dash-stat-label">Revoked</div>
+      </div>
+      <div class="dash-stat-card dark">
+        <div class="dash-stat-num" id="dVerif">—</div>
+        <div class="dash-stat-label">Verifications (Global)</div>
+      </div>
+    </div>
+
+    <div class="recent-section">
+      <h3 class="section-subtitle">Recent Certificates</h3>
+      <div id="recentTable">
+        <div class="loading-spinner">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PANEL: Upload ─────────────────────────────────────────── -->
+  <div class="panel" id="panel-upload">
+    <div class="upload-card">
+      <h3 class="upload-title">Register New Certificate</h3>
+      <p class="upload-sub">All registered certificates get a unique ID + QR code instantly.</p>
+
+      <div id="uploadAlert" class="alert" style="display:none"></div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Student Full Name *</label>
+          <input type="text" id="uName" class="form-input" placeholder="e.g. N S V S Surya" />
+        </div>
+        <div class="form-group">
+          <label>Roll Number *</label>
+          <input type="text" id="uRoll" class="form-input" placeholder="e.g. 245523753052" />
+        </div>
+        <div class="form-group">
+          <label>Student Email</label>
+          <input type="email" id="uEmail" class="form-input" placeholder="student@example.com" />
+        </div>
+        <div class="form-group">
+          <label>Course / Degree *</label>
+          <input type="text" id="uCourse" class="form-input" placeholder="e.g. B.Tech Computer Science" />
+        </div>
+        <div class="form-group">
+          <label>Specialization</label>
+          <input type="text" id="uSpec" class="form-input" placeholder="e.g. AI & ML" />
+        </div>
+        <div class="form-group">
+          <label>Issue Date *</label>
+          <input type="date" id="uDate" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Expiry Date</label>
+          <input type="date" id="uExpiry" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Grade</label>
+          <input type="text" id="uGrade" class="form-input" placeholder="e.g. A+" />
+        </div>
+        <div class="form-group">
+          <label>CGPA</label>
+          <input type="number" id="uCgpa" class="form-input" placeholder="e.g. 9.2" step="0.01" min="0" max="10" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="uploadCert()" id="uploadBtn">
+        ⬆ Register Certificate
+      </button>
+    </div>
+
+    <!-- QR Result -->
+    <div class="qr-result" id="qrResult" style="display:none">
+      <h3>Certificate Registered!</h3>
+      <p>Certificate ID: <strong id="newCertId"></strong></p>
+      <img id="qrImg" class="qr-img" alt="QR Code" />
+      <p class="hint">Share this QR code on the printed certificate for instant verification.</p>
+      <button class="btn btn-outline" onclick="downloadQR()">⬇ Download QR Code</button>
+    </div>
+  </div>
+
+  <!-- ── PANEL: Manage ─────────────────────────────────────────── -->
+  <div class="panel" id="panel-manage">
+    <div class="manage-toolbar">
+      <input type="text" id="manageSearch" class="form-input search-input"
+             placeholder="Search by name, roll no., or cert ID…"
+             oninput="loadCerts()" />
+      <button class="btn btn-outline" onclick="loadCerts()">Refresh</button>
+    </div>
+    <div id="manageTable">
+      <div class="loading-spinner">Loading…</div>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</main>
+
+<!-- Revoke Modal -->
+<div class="modal-overlay" id="revokeModal" style="display:none">
+  <div class="modal">
+    <h3>Revoke Certificate</h3>
+    <p>Cert ID: <strong id="revokeCertId"></strong></p>
+    <div class="form-group">
+      <label>Reason for revocation</label>
+      <input type="text" id="revokeReason" class="form-input" placeholder="e.g. Fraudulent submission" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmRevoke()">Revoke</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

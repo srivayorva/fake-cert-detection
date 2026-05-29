@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Institution Login — CertVerify</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="auth-page">
+
+<nav class="navbar">
+  <a class="brand" href="index.html">
+    <span class="brand-icon">⬡</span><span>CertVerify</span>
+  </a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Verify Certificate</a>
+  </div>
+</nav>
+
+<div class="auth-wrapper">
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <div class="auth-hero-icon">⬡</div>
+      <h2>Institution Portal</h2>
+      <p>Manage and issue verifiable certificates. Protect your institution's credibility.</p>
+      <ul class="auth-features">
+        <li>✔ Upload certificates securely</li>
+        <li>✔ Auto-generate QR codes</li>
+        <li>✔ Revoke compromised certs</li>
+        <li>✔ Track verification activity</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-card">
+      <h1 class="auth-title">Sign In</h1>
+      <p class="auth-subtitle">Access your institution dashboard</p>
+
+      <div id="loginError" class="alert alert-error" style="display:none"></div>
+
+      <div class="form-group">
+        <label>Institution Email</label>
+        <input type="email" id="loginEmail" class="form-input" placeholder="admin@institution.ac.in" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="loginPw" class="form-input" placeholder="••••••••" />
+          <button class="pw-toggle" onclick="togglePw()">👁</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="doLogin()" id="loginBtn">
+        Sign In →
+      </button>
+
+      <p class="auth-footer-text">
+        Demo credentials: <code>admin@kmec.ac.in</code> / <code>Admin@123</code>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw    = document.getElementById('loginPw').value;
+  const btn   = document.getElementById('loginBtn');
+  const err   = document.getElementById('loginError');
+
+  err.style.display = 'none';
+  if (!email || !pw) {
+    showError('Please enter your email and password.'); return;
+  }
+
+  btn.textContent = 'Signing in…';
+  btn.disabled = true;
+
+  try {
+    const data = await API.post('/auth/login', { email, password: pw });
+    if (data.success) {
+      localStorage.setItem('cv_token', data.token);
+      localStorage.setItem('cv_inst', JSON.stringify(data.institution));
+      window.location.href = 'dashboard.html';
+    } else {
+      showError(data.message);
+    }
+  } catch (e) {
+    showError('Server error. Is the backend running?');
+  } finally {
+    btn.textContent = 'Sign In →';
+    btn.disabled = false;
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function togglePw() {
+  const f = document.getElementById('loginPw');
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// Redirect if already logged in
+if (localStorage.getItem('cv_token')) window.location.href = 'dashboard.html';
+</script>
+</body>
+</html>
