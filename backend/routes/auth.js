@@ -53,7 +53,7 @@ router.post('/login', async (req, res) => {
     }
 
     const institution = rows[0];
-    const match = await bcrypt.compare(password, institution.password);
+    const match = password === institution.password;
     console.log('Entered Password:', password);
 console.log('DB Password:', institution.password);
 console.log('Match:', match);
