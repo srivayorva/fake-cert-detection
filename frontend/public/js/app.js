@@ -44,7 +44,7 @@ async function verifyCertById() {
 
   try {
 const API_URL =
-  'https://nacho-scavenger-pasty.ngrok-free.dev/api';
+'https://fake-cert-detection.onrender.com/api';
 const response = await fetch(
   `${API_URL}/verify/${encodeURIComponent(certId)}`
 );
